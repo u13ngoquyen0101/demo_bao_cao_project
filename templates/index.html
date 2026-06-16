@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo Cáo Tổng Hợp Sản Lượng Theo Khách Hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+<body class="bg-[#f4f6f8] min-h-screen">
+
+<div class="navbar bg-[#1a1a2e] text-white px-8 min-h-[55px]">
+    <div class="flex-1 flex items-center gap-2">
+        <span class="text-lg font-bold tracking-wider">BVBB</span>
+        <span class="text-gray-400 font-normal">| AIGU</span>
+    </div>
+    <div class="flex-none">
+        <ul class="menu menu-horizontal px-1 text-sm [&_.active]:text-white [&_.active]:border-b-2 [&_.active]:border-white">
+            <li><a class="text-gray-400">Lô hàng gần đây</a></li>
+            <li><a class="text-gray-400">Đề nghị thanh toán</a></li>
+            <li><a class="active text-white border-b-2 border-white">Báo cáo sản lượng</a></li>
+            <li><a class="text-gray-400">Nhân sự</a></li>
+            <li><a class="text-gray-400">Thông báo</a></li>
+        </ul>
+    </div>
+    <div class="text-sm text-gray-400">⚙️ Kế Toán</div>
+</div>
+
+<div class="container mx-auto max-w-[1400px] px-5 py-8">
+
+    <div class="flex justify-between items-center mb-5">
+        <h1 class="text-2xl font-bold text-gray-800 uppercase">Báo Cáo Tổng Hợp Sản Lượng Theo Khách Hàng</h1>
+        <div class="flex gap-2">
+            <button class="btn btn-outline btn-sm" id="toggleChartBtn" onclick="toggleChart()">
+                📊 Ẩn/Hiện Biểu đồ
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="exportExcel()">Export Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="applyFilters()">Làm mới dữ liệu</button>
+        </div>
+    </div>
+
+    <div class="flex gap-5 mb-5">
+        <div class="bg-white rounded-lg shadow-sm p-4 flex-1 border-l-4 border-blue-500">
+            <div class="text-xs text-gray-500 mb-1" id="totalEntityLabel">Tổng khách hàng giao dịch</div>
+            <div class="text-2xl font-bold text-gray-800" id="totalCustCount">0</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4 flex-1 border-l-4 border-green-500" id="newCustomerCard">
+            <div class="text-xs text-gray-500 mb-1" id="newEntityLabel">Khách hàng mới phát sinh (RCV_date)</div>
+            <div class="text-2xl font-bold text-green-600" id="newCustCount">0</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4 flex-1 border-l-4 border-blue-500">
+            <div class="text-xs text-gray-500 mb-1">Tổng sản lượng (Số Lô)</div>
+            <div class="text-2xl font-bold text-gray-800" id="totalOrdersCount">0</div>
+        </div>
+    </div>
+
+    <div class="flex gap-5 mb-5" id="widgetSection">
+        <div class="bg-white rounded-lg shadow-sm p-4 flex-1">
+            <div class="text-xs font-bold uppercase tracking-wider text-green-600 mb-2" id="recentWidgetTitle">🟢 Mới nhất</div>
+            <div class="text-sm" id="recentWidget">Đang tải...</div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4 flex-1">
+            <div class="text-xs font-bold uppercase tracking-wider text-red-500 mb-2" id="dormantWidgetTitle">🔴 Lâu nhất chưa phát sinh</div>
+            <div class="text-sm" id="dormantWidget">Đang tải...</div>
+        </div>
+    </div>
+
+    <div class="flex gap-2 mb-3" id="viewGroup">
+        <button class="btn btn-sm btn-active" data-group="customer" onclick="switchGroup('customer')">Khách hàng</button>
+        <button class="btn btn-sm" data-group="trucking_comp" onclick="switchGroup('trucking_comp')">Trucking Company</button>
+        <button class="btn btn-sm" data-group="lines" onclick="switchGroup('lines')">Lines/FWD</button>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm mb-5 p-5 border border-gray-100">
+        <div class="flex flex-wrap items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-gray-500 whitespace-nowrap">Từ ngày:</label>
+                    <input type="date" id="fromDate" class="input input-bordered input-sm min-w-[180px]">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-gray-500 whitespace-nowrap">Đến ngày:</label>
+                    <input type="date" id="toDate" class="input input-bordered input-sm min-w-[180px]">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-gray-500 whitespace-nowrap" id="filterLabel">Khách hàng/Đối tác:</label>
+                    <div class="dropdown-container" id="customerDropdown">
+                        <div class="dropdown-select" onclick="toggleDropdown('customer')">
+                            <span class="selected-text">-- Tất cả Khách hàng --</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="dropdown-list" id="customerList">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Tìm kiếm khách hàng..." onkeyup="filterCustomers(this.value, 'customer')">
+                            </div>
+                            <div id="customerOptions"></div>
+                        </div>
+                    </div>
+                    <div class="dropdown-container" id="linesDropdown" style="display:none">
+                        <div class="dropdown-select" onclick="toggleDropdown('lines')">
+                            <span class="selected-text">-- Tất cả Hãng tàu --</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="dropdown-list" id="linesList">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Tìm kiếm hãng tàu..." onkeyup="filterCustomers(this.value, 'lines')">
+                            </div>
+                            <div id="linesOptions"></div>
+                        </div>
+                    </div>
+                    <div class="dropdown-container" id="truckingDropdown" style="display:none">
+                        <div class="dropdown-select" onclick="toggleDropdown('trucking')">
+                            <span class="selected-text">-- Tất cả Cty vận tải --</span>
+                            <span class="arrow">▼</span>
+                        </div>
+                        <div class="dropdown-list" id="truckingList">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Tìm kiếm công ty..." onkeyup="filterCustomers(this.value, 'trucking')">
+                            </div>
+                            <div id="truckingOptions"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-gray-500 whitespace-nowrap">Loại hình:</label>
+                    <select id="typeFilter" class="select select-bordered select-sm min-w-[120px]" onchange="handleTypeChange()">
+                        <option value="ALL">Tất cả</option>
+                        <option value="IM">Hàng Nhập (IM)</option>
+                        <option value="EX">Hàng Xuất (EX)</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2" id="coFilterGroup" style="opacity:0.5">
+                    <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-500">
+                        <input type="checkbox" id="coFilter" disabled onchange="applyFilters()" class="checkbox checkbox-sm">
+                        Chỉ hàng có C/O
+                    </label>
+                </div>
+                <button class="btn btn-orange btn-sm ml-auto" onclick="applyFilters()">Tìm kiếm</button>
+            </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm mb-5 p-6 border border-gray-100" id="chartArea">
+        <div class="flex justify-between items-center mb-5">
+            <div class="font-bold text-gray-600" id="chartMainTitle">Phân tích xu hướng & So sánh sản lượng (Số Lô)</div>
+            <div class="flex items-center gap-2">
+                <select id="viewMode" onchange="applyFilters()" class="select select-bordered select-sm">
+                    <option value="month">Theo Tháng</option>
+                    <option value="quarter">Theo Quý</option>
+                    <option value="year">Theo Năm</option>
+                </select>
+                <span class="text-xs text-gray-500">Mặc định hiển thị theo Số Lô</span>
+            </div>
+        </div>
+        <div class="relative" style="height:350px;">
+            <canvas id="analyticsChart" style="max-height:350px;"></canvas>
+            <div id="chartPlaceholder" class="absolute inset-0 flex items-center justify-center text-gray-400 text-base" style="display:none;">
+                Vui lòng chọn đối tượng để xem biểu đồ
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-100">
+        <div class="overflow-x-auto">
+            <table class="table w-full" style="table-layout:fixed" id="reportTable">
+                <thead></thead>
+                <tbody id="reportTableBody"></tbody>
+                <tfoot id="reportTableFoot"></tfoot>
+            </table>
+        </div>
+        <div class="flex items-center justify-center gap-4 p-4 text-sm text-gray-500 border-t border-gray-100">
+            <button class="btn btn-ghost btn-xs">◀</button>
+            <span>1 of 1</span>
+            <button class="btn btn-ghost btn-xs">▶</button>
+            <div class="flex items-center gap-1 ml-2">
+                Page <input type="number" value="1" class="input input-bordered input-xs w-12 text-center"> of 1
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

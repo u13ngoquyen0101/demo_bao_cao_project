@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi Tiết Lô Hàng – BVBB | AIGU</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        .badge-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .badge-im { background: #e8f4fd; color: #0070d2; }
+        .badge-ex { background: #fff3e0; color: #e65100; }
+        .badge-co  { background: #e6f4ea; color: #1e7e34; font-size:11px; padding:2px 7px; border-radius:4px; font-weight:600; }
+        .badge-nco { background: #f8f9fa; color: #aaa; font-size:11px; padding:2px 7px; border-radius:4px; }
+        .state-row td { text-align: center; padding: 48px; color: #6c757d; font-size: 14px; }
+    </style>
+</head>
+<body class="bg-[#f4f6f8] min-h-screen">
+
+<div class="navbar bg-[#1a1a2e] text-white px-8 min-h-[55px]">
+    <div class="flex-1 flex items-center gap-2">
+        <span class="text-lg font-bold tracking-wider">BVBB</span>
+        <span class="text-gray-400 font-normal">| AIGU</span>
+    </div>
+    <div class="text-sm text-gray-400">Chi Tiết Lô Hàng</div>
+    <div class="text-sm text-gray-400 ml-auto">⚙️ Kế Toán</div>
+</div>
+
+<div class="container mx-auto max-w-[1400px] px-5 py-6">
+
+    <div class="bg-white rounded-lg shadow-sm mb-4 p-4 border border-gray-100">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-4 flex-wrap">
+                <button class="btn btn-ghost btn-sm" onclick="window.close()">← Đóng / Quay lại</button>
+                <div>
+                    <div class="text-xs text-gray-500 mb-0.5" id="entityLabel">Khách hàng</div>
+                    <div class="text-lg font-bold text-gray-800" id="custNameDisplay">—</div>
+                </div>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200" id="filterRecapChip">Đang tải bộ lọc...</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="badge badge-primary badge-lg" id="totalBadge">0 lô</span>
+                <button class="btn btn-success btn-sm text-white" id="exportBtn" onclick="exportToExcel()">
+                    📥 Xuất Excel (.xlsx)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-blue-50 border border-blue-100 text-blue-700 text-xs mb-4 p-3 rounded-lg" id="filterRecap">
+        Đang đọc bộ lọc...
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-100">
+        <div class="overflow-x-auto">
+            <table class="table" id="detailTable">
+                <thead>
+                    <tr>
+                        <th class="text-center w-[3%]">STT</th>
+                        <th class="w-[12%]">Mã Lô</th>
+                        <th class="w-[8%]">RCV Date</th>
+                        <th class="text-center w-[6%]">Loại hình</th>
+                        <th class="text-center w-[5%]">C/O</th>
+                        <th class="w-[11%]">Lines/FWD</th>
+                        <th class="w-[12%]">Trucking Company</th>
+                        <th class="text-right w-[7%]">Tờ khai</th>
+                        <th class="text-right w-[6%]">Cont</th>
+                        <th class="text-center w-[10%]">Khai báo</th>
+                        <th class="text-center w-[10%]">Điều độ</th>
+                    </tr>
+                </thead>
+                <tbody id="detailTableBody">
+                    <tr class="state-row"><td colspan="11">Đang tải dữ liệu...</td></tr>
+                </tbody>
+                <tfoot id="detailTableFoot"></tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const params   = new URLSearchParams(window.location.search);
+const customer  = params.get('customer')  || '';
+const linesFilter  = params.get('lines')  || '';
+const truckingComp  = params.get('trucking_comp')  || '';
+const fromDate  = params.get('from_date') || '';
+const toDate    = params.get('to_date')   || '';
+const typeFilter = params.get('type')     || 'ALL';
+const coFilter  = params.get('co_filter') || 'ALL';
+
+const entityName = customer || truckingComp || linesFilter || '';
+const entityLabel = customer ? 'Khách hàng' : truckingComp ? 'Trucking Company' : linesFilter ? 'Lines/FWD' : '';
+document.getElementById('custNameDisplay').textContent = entityName || '(Tất cả)';
+document.getElementById('entityLabel').textContent = entityLabel || 'Khách hàng';
+document.title = `Chi tiết lô hàng – ${entityName}`;
+
+const typeLabel  = typeFilter === 'ALL' ? 'Tất cả' : (typeFilter === 'IM' ? 'Hàng Nhập (IM)' : 'Hàng Xuất (EX)');
+const coLabel    = coFilter === 'YES' ? 'Chỉ có C/O' : 'Tất cả';
+const dateLabel  = (fromDate && toDate) ? `${fromDate} → ${toDate}` : (fromDate || toDate || 'Không giới hạn');
+
+const filterChipParts = [dateLabel, typeLabel];
+if (coFilter === 'YES') filterChipParts.push('C/O');
+document.getElementById('filterRecapChip').textContent  = filterChipParts.join(' | ');
+document.getElementById('filterRecap').innerHTML =
+    `<strong>Bộ lọc đang áp dụng:</strong> &nbsp;`
+    + `${entityLabel}: <strong>${entityName || 'Tất cả'}</strong> &nbsp;|&nbsp; `
+    + `Ngày RCV: <strong>${dateLabel}</strong> &nbsp;|&nbsp; `
+    + `Loại hình: <strong>${typeLabel}</strong> &nbsp;|&nbsp; `
+    + `C/O: <strong>${coLabel}</strong>`;
+
+let _lotsData = [];
+
+async function loadData() {
+    const tbody = document.getElementById('detailTableBody');
+    const tfoot = document.getElementById('detailTableFoot');
+    tbody.innerHTML = '<tr class="state-row"><td colspan="9">Đang tải dữ liệu...</td></tr>';
+    tfoot.innerHTML = '';
+
+    try {
+        let url = `/api/shipments?customer=${encodeURIComponent(customer)}&lines=${encodeURIComponent(linesFilter)}&trucking_comp=${encodeURIComponent(truckingComp)}`
+                + `&from_date=${fromDate}&to_date=${toDate}`
+                + `&type=${typeFilter}&co_filter=${coFilter}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+
+        _lotsData = data.lots || [];
+        renderTable(_lotsData);
+    } catch (err) {
+        tbody.innerHTML = `<tr class="state-row"><td colspan="9" style="color:#dc3545;">Lỗi tải dữ liệu: ${err.message}</td></tr>`;
+    }
+}
+
+function renderTable(lots) {
+    const tbody = document.getElementById('detailTableBody');
+    const tfoot = document.getElementById('detailTableFoot');
+    tbody.innerHTML = '';
+    tfoot.innerHTML = '';
+
+    document.getElementById('totalBadge').textContent = `${lots.length} lô`;
+
+    if (lots.length === 0) {
+        tbody.innerHTML = '<tr class="state-row"><td colspan="11">Không có lô hàng nào phù hợp với bộ lọc hiện tại.</td></tr>';
+        return;
+    }
+
+    let totalDecl = 0, totalCont = 0, doneDecl = 0, doneDisp = 0;
+
+    lots.forEach((lot, idx) => {
+        totalDecl += lot.declarations;
+        totalCont += lot.containers;
+        if (lot.status_declared)   doneDecl++;
+        if (lot.status_dispatched) doneDisp++;
+
+        const tr = document.createElement('tr');
+
+        const typeBadge = lot.type === 'IM'
+            ? '<span class="badge-type badge-im">IM</span>'
+            : '<span class="badge-type badge-ex">EX</span>';
+
+        const coBadge = lot.has_co
+            ? '<span class="badge-co">Có C/O</span>'
+            : '<span class="badge-nco">—</span>';
+
+        const cbDecl = `<div class="flex items-center justify-center gap-1.5">
+            <input type="checkbox" class="checkbox checkbox-xs" ${lot.status_declared ? 'checked' : ''} disabled>
+            <span class="${lot.status_declared ? 'text-green-600 text-xs font-semibold' : 'text-gray-400 text-xs'}">
+                ${lot.status_declared ? 'Hoàn tất' : 'Chưa xong'}
+            </span>
+        </div>`;
+
+        const cbDisp = `<div class="flex items-center justify-center gap-1.5">
+            <input type="checkbox" class="checkbox checkbox-xs" ${lot.status_dispatched ? 'checked' : ''} disabled>
+            <span class="${lot.status_dispatched ? 'text-green-600 text-xs font-semibold' : 'text-gray-400 text-xs'}">
+                ${lot.status_dispatched ? 'Hoàn tất' : 'Chưa xong'}
+            </span>
+        </div>`;
+
+        tr.innerHTML = `
+            <td class="text-center text-gray-500">${idx + 1}</td>
+            <td class="font-semibold font-mono text-xs text-gray-800">${lot.lot_code}</td>
+            <td class="text-gray-500">${lot.rcv_date}</td>
+            <td class="text-center">${typeBadge}</td>
+            <td class="text-center">${coBadge}</td>
+            <td class="text-gray-600 text-xs">${lot.lines || '---'}</td>
+            <td class="text-gray-600 text-xs">${lot.trucking_comp || '---'}</td>
+            <td class="text-right">${lot.declarations}</td>
+            <td class="text-right">${lot.containers}</td>
+            <td>${cbDecl}</td>
+            <td>${cbDisp}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    const ftRow = document.createElement('tr');
+    ftRow.className = 'summary-row';
+    ftRow.innerHTML = `
+        <td colspan="7" class="text-right text-gray-600">
+            TỔNG CỘNG &nbsp;(${lots.length} lô &nbsp;|&nbsp; Khai báo: ${doneDecl}/${lots.length} &nbsp;|&nbsp; Điều độ: ${doneDisp}/${lots.length})
+        </td>
+        <td class="text-right">${totalDecl}</td>
+        <td class="text-right">${totalCont}</td>
+        <td colspan="2"></td>
+    `;
+    tfoot.appendChild(ftRow);
+}
+
+function exportToExcel() {
+    if (!_lotsData || _lotsData.length === 0) {
+        alert('Không có dữ liệu để xuất!');
+        return;
+    }
+
+    const typeLabel2  = typeFilter === 'ALL' ? 'Tất cả' : (typeFilter === 'IM' ? 'Hàng Nhập (IM)' : 'Hàng Xuất (EX)');
+    const coLabel2    = coFilter === 'YES' ? 'Có C/O' : 'Tất cả';
+    const dateLabel2  = (fromDate && toDate) ? `${fromDate} đến ${toDate}` : (fromDate || toDate || 'Không giới hạn');
+
+    const headerRows = [
+        ['BÁO CÁO CHI TIẾT LÔ HÀNG – BVBB | AIGU'],
+        [`${entityLabel}: ${entityName || 'Tất cả'}`],
+        [`Ngày RCV: ${dateLabel2}     |     Loại hình: ${typeLabel2}     |     C/O: ${coLabel2}`],
+        [`Xuất ngày: ${new Date().toLocaleString('vi-VN')}`],
+        [],
+        ['STT', 'Mã Lô Hàng', 'RCV Date', 'Loại hình', 'Có C/O', 'Lines/FWD', 'Trucking Company', 'Số Tờ khai', 'Số Cont', 'Khai báo (Hoàn tất)', 'Điều độ (Hoàn tất)']
+    ];
+
+    const dataRows = _lotsData.map((lot, idx) => [
+        idx + 1,
+        lot.lot_code,
+        lot.rcv_date,
+        lot.type,
+        lot.has_co ? 'Có' : 'Không',
+        lot.lines || '',
+        lot.trucking_comp || '',
+        lot.declarations,
+        lot.containers,
+        lot.status_declared   ? 'Hoàn tất' : 'Chưa xong',
+        lot.status_dispatched ? 'Hoàn tất' : 'Chưa xong'
+    ]);
+
+    const totalDecl = _lotsData.reduce((s, l) => s + l.declarations, 0);
+    const totalCont = _lotsData.reduce((s, l) => s + l.containers, 0);
+    const doneDecl  = _lotsData.filter(l => l.status_declared).length;
+    const doneDisp  = _lotsData.filter(l => l.status_dispatched).length;
+
+    const summaryRow = [
+        'TỔNG CỘNG', `${_lotsData.length} lô`, '', '', '', '', '',
+        totalDecl, totalCont,
+        `${doneDecl}/${_lotsData.length} hoàn tất`,
+        `${doneDisp}/${_lotsData.length} hoàn tất`
+    ];
+
+    const allRows = [...headerRows, ...dataRows, [], summaryRow];
+
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+    ws['!cols'] = [
+        { wch: 5 }, { wch: 22 }, { wch: 12 }, { wch: 8 }, { wch: 6 },
+        { wch: 14 }, { wch: 18 }, { wch: 10 }, { wch: 7 }, { wch: 16 }, { wch: 16 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Chi Tiết Lô Hàng');
+
+    const safeName = (entityName || 'TatCa').replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const fileName = `ChiTiet_LoHang_${safeName}_${fromDate || 'all'}_${toDate || 'all'}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
+}
+
+document.addEventListener('DOMContentLoaded', loadData);
+</script>
+</body>
+</html>

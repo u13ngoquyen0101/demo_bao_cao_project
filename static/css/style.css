@@ -1,0 +1,212 @@
+:root {
+    --b1: 1 0 0;
+    --b2: 0.97 0.01 240;
+    --b3: 0.92 0.02 240;
+    --primary-blue: #007bff;
+    --primary-orange: #f26b21;
+    --primary-orange-hover: #d15617;
+    --bg-body: #f4f6f8;
+    --border-color: #e0e0e0;
+    --text-muted: #6c757d;
+    --success-green: #28a745;
+    --danger-red: #dc3545;
+}
+
+.btn-orange {
+    background-color: var(--primary-orange) !important;
+    border-color: var(--primary-orange) !important;
+    color: white !important;
+}
+.btn-orange:hover {
+    background-color: var(--primary-orange-hover) !important;
+    border-color: var(--primary-orange-hover) !important;
+}
+
+.badge-new {
+    background-color: var(--success-green);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.wi {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 0;
+}
+.wi-name {
+    font-weight: 500;
+    color: #444;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.wi-date {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    margin-left: 10px;
+}
+
+.summary-row td {
+    font-weight: 700 !important;
+    color: var(--primary-blue) !important;
+    font-size: 14px;
+}
+
+#analyticsChart {
+    width: 100% !important;
+    max-height: 350px;
+}
+.chart-card.hidden {
+    display: none;
+}
+
+.dropdown-container {
+    position: relative;
+    min-width: 250px;
+}
+.dropdown-select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    font-size: 13px;
+    min-height: 35px;
+}
+.dropdown-select .selected-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+.dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+}
+.dropdown-list.show {
+    display: block;
+}
+.dropdown-search {
+    padding: 8px;
+    position: sticky;
+    top: 0;
+    background: white;
+    border-bottom: 1px solid #eee;
+}
+.dropdown-search input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+.dropdown-item {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.2s;
+}
+.dropdown-item:hover {
+    background-color: #f1f3f5;
+}
+.dropdown-item input[type="checkbox"] {
+    cursor: pointer;
+    width: 14px;
+    height: 14px;
+}
+.dropdown-item.hidden {
+    display: none;
+}
+
+/* === Table header — darker text for readability === */
+.table thead th {
+    color: #333 !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.3px;
+}
+
+/* === Table row borders — lighter gray === */
+.table tbody tr {
+    border-bottom: 1px solid #f0f0f0 !important;
+}
+.table tfoot tr {
+    border-top: 1px solid #e8e8e8;
+}
+
+/* === Inputs / Selects — white background === */
+.input-bordered,
+.select-bordered {
+    background-color: #fff !important;
+    border-color: #ced4da !important;
+}
+.input-bordered:focus,
+.select-bordered:focus {
+    border-color: var(--primary-blue) !important;
+}
+
+/* === Checkbox — sáng hơn === */
+.checkbox {
+    border-color: #bbb !important;
+    background-color: #fff !important;
+}
+.checkbox:disabled {
+    opacity: 0.6 !important;
+    --tw-border-opacity: 0.4 !important;
+}
+
+/* === Datepicker — fix mất native picker do DaisyUI appearance:none === */
+input[type="date"] {
+    appearance: auto !important;
+    -webkit-appearance: auto !important;
+}
+
+/* === View Group Buttons (Khách hàng / Trucking / Lines) === */
+#viewGroup .btn {
+    background: #fff;
+    border: 1px solid #d0d0d0;
+    color: #555;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+    transition: all 0.15s ease;
+    font-weight: 600;
+    padding: 6px 18px;
+}
+#viewGroup .btn:hover {
+    background: #f5f5f5;
+    border-color: #bbb;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+#viewGroup .btn.btn-active {
+    background: #1a1a2e !important;
+    border-color: #1a1a2e !important;
+    color: #fff !important;
+    box-shadow: 0 3px 8px rgba(26,26,46,0.25);
+}
+#viewGroup .btn.btn-active:hover {
+    background: #2a2a4e !important;
+    border-color: #2a2a4e !important;
+}
