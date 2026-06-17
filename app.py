@@ -253,9 +253,9 @@ def _group_customer(lots, from_date, to_date, selected_customers=[]):
         chart[cust_name][m] += 1
 
     cust_list = list(table_agg.values())
-    by_rcv = sorted(cust_list, key=lambda x: x['last_rcv'], reverse=True)
-    recent = [{"customer": c['customer'], "last_rcv": c['last_rcv']} for c in by_rcv[:5]]
-    dormant = [{"customer": c['customer'], "last_rcv": c['last_rcv']} for c in by_rcv[-5:]]
+    all_sorted = sorted(CUSTOMER_LAST_RCV.items(), key=lambda x: x[1], reverse=True)
+    recent = [{"customer": name, "last_rcv": rcv} for name, rcv in all_sorted[:5]]
+    dormant = [{"customer": name, "last_rcv": rcv} for name, rcv in all_sorted[-5:]]
     dormant.reverse()
 
     sc = len(selected_customers)
