@@ -498,6 +498,7 @@ async function applyFilters() {
             updateChart(result.chart, result.months, fromDate, toDate, result.group, hf, result.filter_name, sc);
 
             if (result.group === 'customer') {
+                document.getElementById('newCustCount').innerText = result.new_customers_count != null ? result.new_customers_count : 0;
                 renderRecentDormant(result.recent_customers, result.dormant_customers);
             }
         }, 300);
